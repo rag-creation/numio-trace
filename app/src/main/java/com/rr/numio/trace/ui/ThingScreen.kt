@@ -59,12 +59,12 @@ fun ThingScreen(
     /** Logs it again right now; returns the new entry's id, or null if saving failed. */
     onAgain: () -> String?,
     onDelete: (String) -> Boolean,
+    onEdit: (Entry) -> Unit,
 ) {
     val p = LocalPalette.current
     val today = LocalDate.now()
     val snack = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var toDelete by remember { mutableStateOf<Entry?>(null) }
 
     Scaffold(
         containerColor = p.bg,
@@ -137,39 +137,24 @@ fun ThingScreen(
                 }
             }
             item {
-                SectionLabel("Every time", Modifier.padding(start = 24.dp, bottom = 12.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionLabel("Every time", Modifier.weight(1f))
+                    Text("Tap one to edit", color = p.muted, fontSize = 12.sp)
+                }
             }
             itemsIndexed(thing.entries, key = { _, e -> e.id }) { i, e ->
                 HistoryRow(
                     e = e,
                     first = i == 0,
                     gap = thing.gaps.getOrNull(i),
-                    onClick = { toDelete = e },
+                    onClick = { onEdit(e) },
                 )
             }
             item { Spacer(Modifier.height(16.dp)) }
         }
-    }
-
-    toDelete?.let { e ->
-        AlertDialog(
-            onDismissRequest = { toDelete = null },
-            title = { Text("Remove this time?") },
-            text = { Text("${Fmt.fullDate(e.at)} at ${Fmt.time(e.at)} will be removed from “${e.title}”.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    val ok = onDelete(e.id)
-                    toDelete = null
-                    if (!ok) scope.launch { snack.showSnackbar("Couldn't remove it. Please try again.") }
-                }) { Text("Remove", color = p.accentText) }
-            },
-            dismissButton = {
-                TextButton(onClick = { toDelete = null }) { Text("Cancel", color = p.muted) }
-            },
-            containerColor = p.surface,
-            titleContentColor = p.text,
-            textContentColor = p.muted,
-        )
     }
 }
 

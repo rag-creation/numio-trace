@@ -23,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -56,6 +58,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rr.numio.trace.data.Entry
 import com.rr.numio.trace.data.Thing
 import com.rr.numio.trace.data.keyOf
 import java.time.Instant
@@ -69,6 +72,8 @@ private sealed interface When {
     data object Now : When
     data object Yesterday : When
     data class Day(val date: LocalDate) : When
+    /** Editing: keep the exact time it was saved with. */
+    data class Original(val at: Long) : When
 }
 
 private fun When.toMillis(): Long {
@@ -81,6 +86,7 @@ private fun When.toMillis(): Long {
             if (date == LocalDate.now()) now
             else date.atTime(LocalTime.now()).atZone(zone).toInstant().toEpochMilli()
         }
+        is When.Original -> at
     }
 }
 
@@ -90,16 +96,20 @@ fun AddSheet(
     things: List<Thing>,
     onSave: (title: String, at: Long, note: String, tag: String) -> Unit,
     onDismiss: () -> Unit,
+    /** When set, the sheet edits this trace instead of adding a new one. */
+    editing: Entry? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     val p = LocalPalette.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var title by rememberSaveable { mutableStateOf("") }
-    var note by rememberSaveable { mutableStateOf("") }
-    var tag by rememberSaveable { mutableStateOf("") }
-    var showNote by rememberSaveable { mutableStateOf(false) }
-    var showTag by rememberSaveable { mutableStateOf(false) }
-    var whenPick by remember { mutableStateOf<When>(When.Now) }
+    var title by rememberSaveable { mutableStateOf(editing?.title ?: "") }
+    var note by rememberSaveable { mutableStateOf(editing?.note ?: "") }
+    var tag by rememberSaveable { mutableStateOf(editing?.tag ?: "") }
+    var showNote by rememberSaveable { mutableStateOf(!editing?.note.isNullOrBlank()) }
+    var showTag by rememberSaveable { mutableStateOf(!editing?.tag.isNullOrBlank()) }
+    var whenPick by remember { mutableStateOf<When>(editing?.let { When.Original(it.at) } ?: When.Now) }
     var pickingDate by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val today = LocalDate.now()
 
@@ -110,7 +120,7 @@ fun AddSheet(
     }
     val exact = things.firstOrNull { it.key == typed && typed.isNotEmpty() }
 
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(Unit) { if (editing == null) runCatching { focus.requestFocus() } }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -128,10 +138,10 @@ fun AddSheet(
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("What did you do?")
+                SectionLabel(if (editing != null) "Edit trace" else "What did you do?")
                 Box(Modifier.fillMaxWidth()) {
                     if (title.isEmpty()) {
-                        Text("Changed AC filter", color = p.muted.copy(alpha = 0.6f), fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                        Text("e.g. Changed AC filter", color = p.muted.copy(alpha = 0.35f), fontSize = 26.sp, fontWeight = FontWeight.Medium)
                     }
                     BasicTextField(
                         value = title,
@@ -144,7 +154,7 @@ fun AddSheet(
                     )
                 }
                 Box(Modifier.fillMaxWidth().height(2.dp).background(p.accent))
-                if (exact != null) {
+                if (exact != null && editing == null) {
                     Text(
                         "Last time: ${Fmt.agoShort(exact.lastDate, today)} · done ${Fmt.times(exact.count)}",
                         color = p.accentText, fontSize = 13.sp,
@@ -152,7 +162,7 @@ fun AddSheet(
                 }
             }
 
-            if (suggestions.isNotEmpty()) {
+            if (suggestions.isNotEmpty() && editing == null) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         if (typed.isEmpty()) "Recent" else "You've done this before",
@@ -172,10 +182,14 @@ fun AddSheet(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Pill("Now", whenPick == When.Now) { whenPick = When.Now }
                     Pill("Yesterday", whenPick == When.Yesterday) { whenPick = When.Yesterday }
-                    val picked = whenPick as? When.Day
+                    val pickedDate = when (val w = whenPick) {
+                        is When.Day -> w.date
+                        is When.Original -> com.rr.numio.trace.data.dateOf(w.at)
+                        else -> null
+                    }
                     Pill(
-                        picked?.let { Fmt.shortDate(it.date, today) } ?: "Pick a day",
-                        picked != null,
+                        pickedDate?.let { Fmt.shortDate(it, today) } ?: "Pick a day",
+                        pickedDate != null,
                         icon = true,
                     ) { pickingDate = true }
                 }
@@ -202,14 +216,48 @@ fun AddSheet(
                 shape = RoundedCornerShape(28.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) {
-                Text("Save", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (editing != null) "Save changes" else "Save", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+
+            if (editing != null && onDelete != null) {
+                TextButton(
+                    onClick = { confirmDelete = true },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, tint = p.muted, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Delete this trace", color = p.muted, fontSize = 15.sp)
+                }
             }
         }
     }
 
+    if (confirmDelete && editing != null && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this trace?") },
+            text = { Text("\u201C${editing.title}\u201D on ${Fmt.fullDate(editing.at)} at ${Fmt.time(editing.at)} will be deleted.") },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Delete", color = p.accentText) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Cancel", color = p.muted) }
+            },
+            containerColor = p.surface,
+            titleContentColor = p.text,
+            textContentColor = p.muted,
+        )
+    }
+
     if (pickingDate) {
         val todayUtc = today.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        val initial = (whenPick as? When.Day)?.date?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli() ?: todayUtc
+        val initialDate = when (val w = whenPick) {
+            is When.Day -> w.date
+            is When.Original -> com.rr.numio.trace.data.dateOf(w.at)
+            When.Yesterday -> today.minusDays(1)
+            When.Now -> today
+        }
+        val initial = initialDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         val state = rememberDatePickerState(
             initialSelectedDateMillis = initial,
             selectableDates = object : SelectableDates {
@@ -222,7 +270,12 @@ fun AddSheet(
                 TextButton(onClick = {
                     state.selectedDateMillis?.let { ms ->
                         val d = Instant.ofEpochMilli(ms).atZone(ZoneOffset.UTC).toLocalDate()
-                        whenPick = if (d == today) When.Now else When.Day(d)
+                        val orig = whenPick as? When.Original
+                        whenPick = when {
+                            orig != null && com.rr.numio.trace.data.dateOf(orig.at) == d -> orig
+                            d == today -> When.Now
+                            else -> When.Day(d)
+                        }
                     }
                     pickingDate = false
                 }) { Text("OK", color = p.accentText) }

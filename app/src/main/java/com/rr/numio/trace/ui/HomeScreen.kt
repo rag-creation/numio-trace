@@ -2,7 +2,9 @@ package com.rr.numio.trace.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +64,7 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
     onSettings: () -> Unit,
+    onEdit: (Entry) -> Unit,
 ) {
     val p = LocalPalette.current
     var query by rememberSaveable { mutableStateOf("") }
@@ -142,7 +145,7 @@ fun HomeScreen(
                         )
                     }
                     items(list, key = { it.id }) { e ->
-                        EntryRow(e, onClick = { onOpen(keyOf(e.title)) })
+                        EntryRow(e, onClick = { onOpen(keyOf(e.title)) }, onLongClick = { onEdit(e) })
                     }
                 }
             }
@@ -215,11 +218,12 @@ private fun DueCard(t: Thing, daysUntil: Long, modifier: Modifier, onClick: () -
 }
 
 @Composable
-private fun EntryRow(e: Entry, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun EntryRow(e: Entry, onClick: () -> Unit, onLongClick: () -> Unit) {
     val p = LocalPalette.current
     val meta = listOf(e.tag, e.note).filter { it.isNotBlank() }.joinToString(" · ")
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 56.dp)
+        Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick).heightIn(min = 56.dp)
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

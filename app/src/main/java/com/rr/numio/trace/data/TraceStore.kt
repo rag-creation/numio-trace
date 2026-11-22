@@ -39,6 +39,8 @@ class TraceStore(context: Context) {
 
     fun delete(id: String): Boolean = commit(entries.filterNot { it.id == id })
 
+    fun update(entry: Entry): Boolean = commit(entries.map { if (it.id == entry.id) entry else it })
+
     private fun commit(next: List<Entry>): Boolean {
         val ok = runCatching { save(next) }.isSuccess
         if (ok) entries = next

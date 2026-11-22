@@ -17,6 +17,7 @@ No internet permission, no ads, no tracking, no account. Your traces never leave
 - **Search**: "When did I last…" finds a thing by name, tag or note.
 - **History of one thing**: every time you did it, the gap between each time, how often you usually do it, and a rough next date.
 - **Did it again**: one button to log it for today, with undo.
+- **Edit or delete** any trace: tap it in a thing's history, or long-press it on the timeline.
 - **Coming round again**: things you do regularly, sorted by when they're due next.
 - **Now, yesterday or any past day**, plus an optional note and tag.
 - **Light, dark or follow system** theme.
@@ -24,7 +25,6 @@ No internet permission, no ads, no tracking, no account. Your traces never leave
 ### Coming next
 
 - Photos and receipts on a trace
-- Edit a saved trace
 - Backup and restore to a file
 - Home-screen quick-add widget
 

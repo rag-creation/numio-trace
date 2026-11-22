@@ -48,6 +48,7 @@ private fun TraceApp(store: TraceStore, prefs: Prefs) {
     var openKey by rememberSaveable { mutableStateOf<String?>(null) }
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var editId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val entries = store.entries
     val things = remember(entries) { thingsOf(entries) }
@@ -67,6 +68,7 @@ private fun TraceApp(store: TraceStore, prefs: Prefs) {
                     if (store.add(e)) e.id else null
                 },
                 onDelete = { id -> store.delete(id) },
+                onEdit = { editId = it.id },
             )
         } else {
             if (key != null) LaunchedEffect(key) { openKey = null }
@@ -76,10 +78,25 @@ private fun TraceApp(store: TraceStore, prefs: Prefs) {
                 onOpen = { openKey = it },
                 onAdd = { showAdd = true },
                 onSettings = { showSettings = true },
+                onEdit = { editId = it.id },
             )
         }
 
-        if (showAdd) {
+        val editing = editId?.let { id -> entries.firstOrNull { it.id == id } }
+        if (editId != null && editing == null) LaunchedEffect(editId) { editId = null }
+        if (editing != null) {
+            AddSheet(
+                things = things,
+                editing = editing,
+                onSave = { title, at, note, tag ->
+                    if (store.update(editing.copy(title = title, at = at, note = note, tag = tag))) editId = null else saveFailed()
+                },
+                onDelete = {
+                    if (store.delete(editing.id)) editId = null else saveFailed()
+                },
+                onDismiss = { editId = null },
+            )
+        } else if (showAdd) {
             AddSheet(
                 things = things,
                 onSave = { title, at, note, tag ->
