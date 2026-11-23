@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon version: one colour, the phone tints it. The tick is cut out of the circle so it still shows. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M48,29.5 L48,33.5 M48,45.5 L48,49.5 M48,61.5 L48,62.5" />
+    <path android:fillColor="#FFFFFF" android:pathData="M45.8,39.5 A2.2,2.2 0 1,0 50.2,39.5 A2.2,2.2 0 1,0 45.8,39.5 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M45.8,55.5 A2.2,2.2 0 1,0 50.2,55.5 A2.2,2.2 0 1,0 45.8,55.5 Z" />
+    <!-- ring + tick so the tick doesn't vanish when everything is one colour -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2" android:pathData="M42,73.5 A6,6 0 1,0 54,73.5 A6,6 0 1,0 42,73.5 Z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M45.1,73.7 L47.3,75.9 L51.3,71.4" />
+    <group android:translateX="34.58" android:translateY="2.69" android:scaleX="0.5" android:scaleY="0.5">
+        <path android:fillColor="#FFFFFF" android:pathData="M42.84,50.63 L50.94,56.90 L47.20,59.90 L47.20,68.77 L42.84,68.77 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M59.25,68.77 L51.15,62.50 L54.88,59.49 L54.88,50.63 L59.25,50.63 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M60.65,67.02 A1.75,1.75 0 1,0 64.16,67.02 A1.75,1.75 0 1,0 60.65,67.02 Z" />
+    </group>
+</vector>
